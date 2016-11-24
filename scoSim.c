@@ -1,3 +1,11 @@
+#include <limits.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <math.h>
+
 typedef int32 mem_addr; //32 bits to store memory addresses
 typedef int32 mem_word; //32 bit storage unit
 typedef uint8_t byte; //Standard size of memory unit
@@ -86,9 +94,6 @@ int main()
 			else if (strcmp(trim_string, ".text") == 0)
 			{
 				is_loading_code = 1;
-			}
-			else if (strcmp(trim_string, ".data") == 0)
-			{
 			}
 
 			else if (is_loading_code == 1)
@@ -257,7 +262,7 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 			trim_string[2 + string_counter] == 'a' &&
 			trim_string[3 + string_counter] == 'c' &&
 			trim_string[4 + string_counter] == 'e' &&
-			isspace(trim_string[6 + string_counter]))
+			isspace(trim_string[5 + string_counter]))
 		{
 			string_counter = string_counter + 5;
 		}
@@ -275,6 +280,35 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 		int length = atoi(value_text_space);
 
 		var_counter += length;
+		break;
+	case 'f':
+		if (trim_string[1 + string_counter] == 'l' &&
+			trim_string[2 + string_counter] == 'o' &&
+			trim_string[3 + string_counter] == 'a' &&
+			trim_string[4 + string_counter] == 't' &&
+			isspace(trim_string[5 + string_counter]))
+		{
+			string_counter = string_counter + 5;
+		}
+		else
+		{
+			//printf("Instructions are invalid.");
+			//return 0;
+		}
+		char *value_text_space = trimwhitespace(trim_string + string_counter); //gets value of syscall
+
+		variables[num_of_vars].is_text = 0;
+		variables[num_of_vars].variable_addr = var_counter + program_top;
+		num_of_vars++;
+
+		char *value_text = trimwhitespace(trim_string + string_counter);
+		//trim_string = trimwhitespace(trim_string + string_counter);
+
+		float value = strtof(value_text);
+		//mem_word value = atoi(trim_string); 
+
+		insertFloatIntoByteArray(memory, var_counter + program_top, value);
+		var_counter = var_counter + 4;
 		break;
 	default:
 		printf("One or more data types is invalid.");
@@ -618,27 +652,30 @@ float getFloatFromByteArray(byte* array, mem_addr location)
 	printf("Left side: %d\n", leftSide);
 	printf("Right side: %d\n", rightSide);
 	
-	float f_rightSide = (float)rightSide;
-	
-	
-	while (f_rightSide > 1)
-	{
-	    printf("Right side: %2.2f\n", f_rightSide);
-		f_rightSide = f_rightSide * .1f;
-	}
+	float f_rightSide = rightSide * .0001f;
 	
 	return leftSide + f_rightSide;
 }
 
 //Inserts a float into an array at the selected array as 4 bytes
-void insertFloatIntoByteArray(byte* array, mem_addr location, mem_word leftSide, mem_word rightSide)
+void insertFloatIntoByteArray(byte* array, mem_addr location, float value)
 {
-	mem_word tempLeft = (leftSide << 16) & 0xFFFF0000;
-	mem_word tempRight = rightSide & 0xFFFF;
+    double temptempLeft;
+    double temptempRight;
+    mem_word tempLeft;
+    mem_word tempRight;
+    
+    temptempRight = modf((double)value, &temptempLeft);
+    temptempRight = temptempRight * 10000;
+    tempRight = (mem_word)temptempRight;
+    tempLeft = (mem_word)temptempLeft;
+    
+	printf("Leftside: %d\n", tempLeft);
+	printf("Rightside: %d\n", tempRight);
 	
-	printf("%d\n", tempLeft + tempRight);
+	printf("%d\n", (tempLeft << 16) + tempRight);
 	
-	insertWordIntoByteArray(array, location, tempLeft + tempRight);
+	insertWordIntoByteArray(array, location, (tempLeft << 16) + tempRight);
 }
 
 
