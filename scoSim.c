@@ -34,3 +34,68 @@ void execute_code()
 	
 }
 
+
+
+
+
+
+
+//Returns a 32 bit value from the address in the specified array
+mem_word getWordFromByteArray(byte* array, mem_addr location) {
+	int i = 0;
+	int value = 0;
+	while (i < 4)
+	{
+		value = (value << 8) + array[location + i];
+		i++;
+	}
+	return value;
+}
+
+//Inserts a word into an array at the selected address as 4 bytes
+void insertWordIntoByteArray(byte* array, mem_addr location, mem_word value) {
+	int i = 4;
+	int workingValue = value;
+	while (i > 0) {
+		array[location + i - 1] = workingValue & 0xFF;
+		workingValue = workingValue >> 8;
+		i--;
+	}
+}
+
+//Returns a float from the address in the specified array
+float getFloatFromByteArray(byte* array, mem_addr location)
+{
+	mem_word val = getWordFromByteArray(array, location);
+	
+	printf("%d\n", val);
+	
+	mem_word leftSide = (val >> 16) & 0xFFFF;
+	mem_word rightSide = val & 0xFFFF;
+	
+	printf("Left side: %d\n", leftSide);
+	printf("Right side: %d\n", rightSide);
+	
+	float f_rightSide = (float)rightSide;
+	
+	
+	while (f_rightSide > 1)
+	{
+	    printf("Right side: %2.2f\n", f_rightSide);
+		f_rightSide = f_rightSide * .1f;
+	}
+	
+	return leftSide + f_rightSide;
+}
+
+//Inserts a float into an array at the selected array as 4 bytes
+void insertFloatIntoByteArray(byte* array, mem_addr location, mem_word leftSide, mem_word rightSide)
+{
+	mem_word tempLeft = (leftSide << 16) & 0xFFFF0000;
+	mem_word tempRight = rightSide & 0xFFFF;
+	
+	printf("%d\n", tempLeft + tempRight);
+	
+	insertWordIntoByteArray(array, location, tempLeft + tempRight);
+}
+
