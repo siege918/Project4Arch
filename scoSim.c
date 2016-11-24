@@ -10,7 +10,7 @@ typedef int32 mem_addr; //32 bits to store memory addresses
 typedef int32 mem_word; //32 bit storage unit
 typedef uint8_t byte; //Standard size of memory unit
 
-enum instruction { nope = 255, syscall = 0, addi = 1, subi = 2, beqz = 3, bge = 4, bne = 5, la = 6, lb = 7, li = 8, b = 9, add = 10 };
+enum instruction { nope = 255, syscall = 0, addi = 1, subi = 2, beqz = 3, bge = 4, bne = 5, la = 6, lb = 7, li = 8, b = 9, add = 10, fadd = 11, fmul = 12, fsub = 13, ld = 14, sd = 15 };
 
 int labelReferenceCount = 0;
 int labelCount = 0;
@@ -308,7 +308,7 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 		//mem_word value = atoi(trim_string); 
 
 		insertFloatIntoByteArray(memory, var_counter + program_top, value);
-		var_counter = var_counter + 4;
+		var_counter = var_counter + 8;
 		break;
 	default:
 		printf("One or more data types is invalid.");
@@ -612,6 +612,132 @@ int parseInstructionString(char * trim_string, struct label_reference label_refe
 		load_counter += 4;
 		//loadLabel(operands, label_references, label_definitions, memory, load_counter);
 	}
+	else if (stringBeginsWith(trim_string, "fadd"))
+	{
+		memory[load_counter] = fadd;
+		load_counter++;
+
+		char * operands = trimwhitespace(trim_string + 4);
+
+		//Loads Registers
+		int destinationRegister = readInRegister(&operands);
+		memory[load_counter] = destinationRegister;
+		load_counter++;
+
+		int sourceRegister = readInRegister(&operands);
+		memory[load_counter] = sourceRegister;
+		load_counter++;
+
+		int targetRegister = readInRegister(&operands);
+		memory[load_counter] = targetRegister;
+		load_counter++;
+	}
+	else if (stringBeginsWith(trim_string, "fmul"))
+	{
+		memory[load_counter] = fmul;
+		load_counter++;
+
+		char * operands = trimwhitespace(trim_string + 4);
+
+		//Loads Registers
+		int destinationRegister = readInRegister(&operands);
+		memory[load_counter] = destinationRegister;
+		load_counter++;
+
+		int sourceRegister = readInRegister(&operands);
+		memory[load_counter] = sourceRegister;
+		load_counter++;
+
+		int targetRegister = readInRegister(&operands);
+		memory[load_counter] = targetRegister;
+		load_counter++;
+	}
+	else if (stringBeginsWith(trim_string, "fsub"))
+	{
+		memory[load_counter] = fsub;
+		load_counter++;
+
+		char * operands = trimwhitespace(trim_string + 4);
+
+		//Loads Registers
+		int destinationRegister = readInRegister(&operands);
+		memory[load_counter] = destinationRegister;
+		load_counter++;
+
+		int sourceRegister = readInRegister(&operands);
+		memory[load_counter] = sourceRegister;
+		load_counter++;
+
+		int targetRegister = readInRegister(&operands);
+		memory[load_counter] = targetRegister;
+		load_counter++;
+	}
+	else if (stringBeginsWith(trim_string, "l.d"))
+	{
+		memory[load_counter] = ld;
+		load_counter++;
+		char * operands = trimwhitespace(trim_string + 2);
+
+		int destinationRegister = readInRegister(&operands);
+		memory[load_counter] = destinationRegister;
+		load_counter++;
+		//operands = trimwhitespace(operands + 1);
+
+		//Detects numbers for immediate and loads to memory
+		int i = 0;
+		if (isdigit(operands[0]))
+		{
+			int offset = (int)operands[0] - '0';
+			while (isdigit(operands[i]))
+			{
+				offset = offset * 10 + ((int)operands[i] - '0');
+				i++;
+			}
+			insertWordIntoByteArray(memory, load_counter, offset);
+		}
+		else
+		{
+			insertWordIntoByteArray(memory, load_counter, 0);
+		}
+		load_counter += 4;
+		operands = operands + i + 1;
+		int sourceRegister = readInRegister(&operands);
+		memory[load_counter] = sourceRegister;
+		load_counter++;
+	}
+	else if (stringBeginsWith(trim_string, "s.d"))
+	{
+		memory[load_counter] = sd;
+		load_counter++;
+		char * operands = trimwhitespace(trim_string + 2);
+
+		int destinationRegister = readInRegister(&operands);
+		memory[load_counter] = destinationRegister;
+		load_counter++;
+		//operands = trimwhitespace(operands + 1);
+
+		//Detects numbers for immediate and loads to memory
+		int i = 0;
+		if (isdigit(operands[0]))
+		{
+			int offset = (int)operands[0] - '0';
+			while (isdigit(operands[i]))
+			{
+				offset = offset * 10 + ((int)operands[i] - '0');
+				i++;
+			}
+			insertWordIntoByteArray(memory, load_counter, offset);
+		}
+		else
+		{
+			insertWordIntoByteArray(memory, load_counter, 0);
+		}
+		load_counter += 4;
+		operands = operands + i + 1;
+		int sourceRegister = readInRegister(&operands);
+		memory[load_counter] = sourceRegister;
+		load_counter++;
+	}
 
 	return load_counter;
 }
@@ -642,17 +768,13 @@ void insertWordIntoByteArray(byte* array, mem_addr location, mem_word value) {
 //Returns a float from the address in the specified array
 float getFloatFromByteArray(byte* array, mem_addr location)
 {
-	mem_word val = getWordFromByteArray(array, location);
-	
-	printf("%d\n", val);
-	
-	mem_word leftSide = (val >> 16) & 0xFFFF;
-	mem_word rightSide = val & 0xFFFF;
+	mem_word leftSide = getWordFromByteArray(array, location);
+	mem_word rightSide = getWordFromByteArray(array, location + 4);
 	
 	printf("Left side: %d\n", leftSide);
 	printf("Right side: %d\n", rightSide);
 	
-	float f_rightSide = rightSide * .0001f;
+	float f_rightSide = rightSide * .000000001f;
 	
 	return leftSide + f_rightSide;
 }
@@ -666,16 +788,15 @@ void insertFloatIntoByteArray(byte* array, mem_addr location, float value)
     mem_word tempRight;
     
     temptempRight = modf((double)value, &temptempLeft);
-    temptempRight = temptempRight * 10000;
+    temptempRight = temptempRight * 1000000000;
     tempRight = (mem_word)temptempRight;
     tempLeft = (mem_word)temptempLeft;
     
 	printf("Leftside: %d\n", tempLeft);
 	printf("Rightside: %d\n", tempRight);
 	
-	printf("%d\n", (tempLeft << 16) + tempRight);
-	
-	insertWordIntoByteArray(array, location, (tempLeft << 16) + tempRight);
+	insertWordIntoByteArray(array, location, tempLeft);
+	insertWordIntoByteArray(array, location + 4, tempRight);
 }
 
 
