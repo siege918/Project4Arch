@@ -11,15 +11,24 @@ bl: .float 0.0
 
 	.text
 	li $0, 100 #Loop
-	l.d $26, X1
-    l.d $27, Y1
-	l.d $28, X2
-	l.d $29, Y2
-	l.d $30, kx
-    l.d $31, ky
-	l.d $5, bl
-	la $3, X0
-	la $4, Y0
+	la $10, X1
+	l.d $26, ($10)
+	la $11, Y1
+    l.d $27, ($11)
+	la $12, X2
+	l.d $28, ($12)
+	la $13, Y2
+	l.d $29, ($13)
+	la $14, kx
+	l.d $30, ($14)
+	la $15, ky
+    l.d $31, ($15)
+	la $16, bl
+	l.d $5, ($16)
+	la $17, X0
+	la $3, ($17)
+	la $18, Y0
+	la $4, ($18)
 loopStart:
     subi $0, $0, 1
 	
