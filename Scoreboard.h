@@ -1,7 +1,7 @@
 #ifndef SCOREBOARD_H_INCLUDED
 #define SCOREBOARD_H_INCLUDED
 
-enum FU {INTEGER, MULT1, MULT2, ADD, DIVIDE};
+enum FU {INTEGER, MULT1, MULT2, ADD, DIVIDE, NOPE = 255};
 enum OP {TEST};
 
 struct Instruction_Status {
