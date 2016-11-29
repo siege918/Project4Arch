@@ -23,7 +23,6 @@ struct FU_Status {
     enum FU Qk;
     int Rj;
     int Rk;
-    int immediate_or_offset;
 };
 
 // struct FU_Status FU_Statuses[];
