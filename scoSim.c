@@ -7,39 +7,10 @@
 #include <math.h>
 #include "Scoreboard.h"
 
-typedef int32 mem_addr; //32 bits to store memory addresses
-typedef int32 mem_word; //32 bit storage unit
-typedef uint8_t byte; //Standard size of memory unit
-
-enum instruction { nope = 255, syscall = 0, addi = 1, subi = 2, beqz = 3, bge = 4, bne = 5, la = 6, lb = 7, li = 8, b = 9, add = 10, fadd = 11, fmul = 12, fsub = 13, ld = 14, sd = 15 };
+#define MEM_SIZE 16384
 
 int labelReferenceCount = 0;
 int labelCount = 0;
-
-//Struct used to store variables
-struct variable {
-	mem_addr variable_addr; //Address of where the data is stored
-	char variable_name[64]; //Name of the variable
-	int is_text; //This is used as a bool to determine if it was a string
-};
-
-struct label_reference {
-	char label[64];
-	mem_addr code_location;
-};
-
-struct label_definition {
-	char label[64];
-	mem_addr pc_addr;
-};
-
-struct ex_wr {
-	enum instruction op_code;
-	mem_word ALU_out;
-	mem_word operand_b;
-	mem_word rd;
-	int init;
-};
 
 int num_of_vars;
 
@@ -48,6 +19,10 @@ mem_word r_registers[];
 
 struct ScoreBoard scoreboard;
 
+byte memory[MEM_SIZE]; //Created memory
+reg registers[35]; //Initialize register
+mem_addr end_of_program;
+enum FU Register_Result_Status[35];
 
 int issue(int *PC);
 int ReadOperands(int *PC, struct ro_ex * ro_ex_new);
@@ -55,7 +30,7 @@ int detectStructuralHazard();
 int checkForWAW();
 int setFetchBuffer();
 
-int main()
+int main(int argc, char **argv)
 {
 	int pc = 0;
 
@@ -155,17 +130,18 @@ int main()
 		printf("Invalid file name.");
 	}
 
-	issue()
+	issue(&pc);
 }
 
 //******************************************************************************************************************************************
 //******************************************************************************************************************************************
 
-issue(int *PC)
+issue(int * pc)
 {
     int ir = *pc;
     int returnValue = 255;
 
+    enum instruction instruction = memory[ir];
     if(DetectIssueHazard()){
         return returnValue;
     }
@@ -176,14 +152,14 @@ issue(int *PC)
 
     if (instruction == la || instruction == lb || instruction == li || instruction == ld || instruction == sd)
     {
-        Scoreboard.FU_Statuses[0].busy = 1;
-        Scoreboard.FU_Statuses[0].op = memory[ir];
-        Scoreboard.FU_Statuses[0].Fi = memory[ir + 1];
+        scoreboard.FU_Statuses[0].busy = 1;
+        scoreboard.FU_Statuses[0].op_code = memory[ir];
+        scoreboard.FU_Statuses[0].Fi = memory[ir + 1];
 
         //Scoreboard.FU_Statuses[0].Fk = memory[sourcelocation];
         if (instruction == la)
         {
-            Scoreboard.FU_Statuses[0].Fk = memory[ir + 2];
+            scoreboard.FU_Statuses[0].Fk = memory[ir + 2];
         }
         // else if (instruction == lb)
         // {
@@ -202,14 +178,14 @@ issue(int *PC)
         {
         }
         
-        if(Register_Result_Status[memory[ir + 2]] == null)
+        if(Register_Result_Status[memory[ir + 2]] == NOPE)
         {
-            Scoreboard.FU_Statuses[0].Rk = 1;
+            scoreboard.FU_Statuses[0].Rk = 1;
         }
         else
         {
-            Scoreboard.FU_Statuses[0].Qk = Register_Result_Status[memory[ir + 2]];
-            Scoreboard.FU_Statuses[0].Rk = 0;
+            scoreboard.FU_Statuses[0].Qk = Register_Result_Status[memory[ir + 2]];
+            scoreboard.FU_Statuses[0].Rk = 0;
         }
 
 
@@ -220,31 +196,31 @@ issue(int *PC)
     else if (instruction == fmul)
     {
         //If mul1 is busy, try mul2
-        if (Scoreboard.FU_Statuses[1].busy != 1)
+        if (scoreboard.FU_Statuses[1].busy != 1)
         {
-            Scoreboard.FU_Statuses[1].busy = 1;
-            Scoreboard.FU_Statuses[1].op = memory[ir];
-            Scoreboard.FU_Statuses[1].Fi = memory[ir + 1];
-            Scoreboard.FU_Statuses[1].Fj = memory[ir + 2];
-            Scoreboard.FU_Statuses[1].Fk = f_registers[memory[ir + 3]];
-            Scoreboard.FU_Statuses[1].Qj = Register_Result_Status[memory[ir + 2];
-            Scoreboard.FU_Statuses[1].Qk = Register_Result_Status[ir + 3];
+            scoreboard.FU_Statuses[1].busy = 1;
+            scoreboard.FU_Statuses[1].op_code = memory[ir];
+            scoreboard.FU_Statuses[1].Fi = memory[ir + 1];
+            scoreboard.FU_Statuses[1].Fj = memory[ir + 2];
+            scoreboard.FU_Statuses[1].Fk = f_registers[memory[ir + 3]];
+            scoreboard.FU_Statuses[1].Qj = Register_Result_Status[memory[ir + 2]];
+            scoreboard.FU_Statuses[1].Qk = Register_Result_Status[ir + 3];
 
-            if(Scoreboard.FU_Statuses[1].Qj == null)
+            if(scoreboard.FU_Statuses[1].Qj == NOPE)
             {
-                Scoreboard.FU_Statuses[1].Rj = 1;
+                scoreboard.FU_Statuses[1].Rj = 1;
             }
             else
             {
-                Scoreboard.FU_Statuses[1].Rj = 0;
+                scoreboard.FU_Statuses[1].Rj = 0;
             }
-            if(Scoreboard.FU_Statuses[1].Qk == null)
+            if(scoreboard.FU_Statuses[1].Qk == NOPE)
             {
-                Scoreboard.FU_Statuses[1].Rk = 1;
+                scoreboard.FU_Statuses[1].Rk = 1;
             }
             else
             {
-                Scoreboard.FU_Statuses[1].Rk = 0;
+                scoreboard.FU_Statuses[1].Rk = 0;
             }
 
             Register_Result_Status[memory[ir + 1]] = MULT1;
@@ -252,84 +228,85 @@ issue(int *PC)
         }
         else 
         {
-            Scoreboard.FU_Statuses[2].busy = 1;
-            Scoreboard.FU_Statuses[2].op = memory[ir];
-            Scoreboard.FU_Statuses[2].Fi = memory[ir + 1];
-            Scoreboard.FU_Statuses[2].Fj = memory[ir + 2];
-            Scoreboard.FU_Statuses[2].Fk = memory[ir + 3];
-            Scoreboard.FU_Statuses[2].Qj = Register_Result_Status[memory[ir + 2]];
-            Scoreboard.FU_Statuses[2].Qk = Register_Result_Status[memory[ir + 3]];
+            scoreboard.FU_Statuses[2].busy = 1;
+            scoreboard.FU_Statuses[2].op_code = memory[ir];
+            scoreboard.FU_Statuses[2].Fi = memory[ir + 1];
+            scoreboard.FU_Statuses[2].Fj = memory[ir + 2];
+            scoreboard.FU_Statuses[2].Fk = memory[ir + 3];
+            scoreboard.FU_Statuses[2].Qj = Register_Result_Status[memory[ir + 2]];
+            scoreboard.FU_Statuses[2].Qk = Register_Result_Status[memory[ir + 3]];
 
-            if(Scoreboard.FU_Statuses[2].Qj == null)
+            if(scoreboard.FU_Statuses[2].Qj == NOPE)
             {
-                Scoreboard.FU_Statuses[2].Rj = 1;
+                scoreboard.FU_Statuses[2].Rj = 1;
             }
             else
             {
-                Scoreboard.FU_Statuses[2].Rj = 0;
+                scoreboard.FU_Statuses[2].Rj = 0;
             }
-            if(Scoreboard.FU_Statuses[2].Qk == null)
+            if(scoreboard.FU_Statuses[2].Qk == NOPE)
             {
-                Scoreboard.FU_Statuses[2].Rk = 1;
+                scoreboard.FU_Statuses[2].Rk = 1;
             }
             else
             {
-                Scoreboard.FU_Statuses[2].Rk = 0;
+                scoreboard.FU_Statuses[2].Rk = 0;
             }
 
-            Register_Result_Status[destinationLocation] = MULT2;
+            Register_Result_Status[memory[ir + 1]] = MULT2;
             returnValue = 2;
         }
     }
     else if (instruction == addi || instruction == add || instruction == fadd || instruction == fsub)
     {
-        Scoreboard.FU_Statuses[3].busy = 1;
-        Scoreboard.FU_Statuses[3].op = memory[opcodeLocation];
-        Scoreboard.FU_Statuses[3].Fi = memory[destinationLocation];
-        Scoreboard.FU_Statuses[3].Fj = memory[targetLocation];
+        scoreboard.FU_Statuses[3].busy = 1;
+        scoreboard.FU_Statuses[3].op_code = memory[ir];
+        scoreboard.FU_Statuses[3].Fi = memory[ir + 1];
+        scoreboard.FU_Statuses[3].Fj = memory[ir + 2];
+        //******************THIS SEEMS WRONG MUST SET TO THE CORRECT THINGS
         if (instruction == addi)
         {
-            Scoreboard.FU_Statuses[3].Fk = memory[sourcelocation];
+            scoreboard.FU_Statuses[3].Fk = memory[ir + 3];
         }
         else if (instruction == add)
         {
-            Scoreboard.FU_Statuses[3].Fk = registers[memory[sourcelocation]];
+            scoreboard.FU_Statuses[3].Fk = registers[memory[ir + 3]];
         }
         else
         {
-            Scoreboard.FU_Statuses[3].Fk = f_registers[memory[sourcelocation]];
+            scoreboard.FU_Statuses[3].Fk = f_registers[memory[ir + 3]];
         }
 
-        Scoreboard.FU_Statuses[3].Qj = Register_Result_Status[memory[ir + 2]];
-        Scoreboard.FU_Statuses[3].Qk = Register_Result_Status[memory[ir + 3]];
+        scoreboard.FU_Statuses[3].Qj = Register_Result_Status[memory[ir + 2]];
+        scoreboard.FU_Statuses[3].Qk = Register_Result_Status[memory[ir + 3]];
 
-        if(Scoreboard.FU_Statuses[3].Qj == null)
+        if(scoreboard.FU_Statuses[3].Qj == NOPE)
         {
-            Scoreboard.FU_Statuses[3].Rj = 1;
+            scoreboard.FU_Statuses[3].Rj = 1;
         }
         else
         {
-            Scoreboard.FU_Statuses[3].Rj = 0;
+            scoreboard.FU_Statuses[3].Rj = 0;
         }
-        if(Scoreboard.FU_Statuses[3].Qk == null)
+        if(scoreboard.FU_Statuses[3].Qk == NOPE)
         {
-            Scoreboard.FU_Statuses[3].Rk = 1;
+            scoreboard.FU_Statuses[3].Rk = 1;
         }
         else
         {
-            Scoreboard.FU_Statuses[3].Rk = 0;
+            scoreboard.FU_Statuses[3].Rk = 0;
         }
 
-        Register_Result_Status[destinationLocation] = ADD;
+        Register_Result_Status[memory[ir + 1]] = ADD;
         returnValue = 3;
     }
-    *PC = *PC + 1;
+    *pc = *pc + 1;
 
     return returnValue;
 
 
 }
-int ReadOperands(int *PC, struct ro_ex * ro_ex_new)
+int ReadOperands(int *pc, struct ro_ex * ro_ex_new)
 {
     int ir = *pc;
     int returnValue = 255;
