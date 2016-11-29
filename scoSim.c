@@ -160,16 +160,43 @@ void copyInstructionStatus(FU functional_unit, struct FU_Status * FUStatus)
 	FUStatus->Rk = scoreboard.FU_Statuses.Rk;
 }
 
-int execute(FU functional_unit, struct ex_wr * ex_mem_new)
+int wb(struct ex_wr * ex_wr_new)
+{	
+	if (ex_wr_new.rd >= 0)
+	{
+		switch (mem_wb_new.op_code)
+		{
+			case la:
+			case li:
+			case addi:
+			case subi:
+			case add:
+				registers[ex_wr_new.rd] = ex_wr_new.ALU_out;
+				break;
+			case lb:
+				registers[ex_wr_new.rd] = memory[ex_wr_new.ALU_out];
+				break;
+			case ld:
+				f_registers[ex_wr_new.rd] = getFloatFromByteArray(memory, ex_wr_new.ALU_out);
+				break;
+			case fadd:
+			case fsub:
+			case fmul:
+				f_registers[ex_wr_new.rd] = ex_wr_new.f_ALU_out;
+				break;
+			case sd:
+				insertFloatIntoByteArray(memory, ex_wr_new.ALU_out, f_registers[ex_wr_new.rd]);
+				break;
+		}
+	}
+}
+
+int execute(struct ro_ex_old, struct ex_wr * ex_mem_new)
 {
 	if (functional_unit == NOPE)
 	{
 		return 0;
 	}
-	
-	FU_Status status;
-	
-	copyInstructionStatus(functional_unit, &status);
 	
 	ex_mem_new->init = id_ex_new.init;
 	int returnVal = 0;
@@ -218,54 +245,66 @@ int execute(FU functional_unit, struct ex_wr * ex_mem_new)
 			}
 		case addi:
 			//Handles addition
-			ex_mem_new->ALU_out = id_ex_new.operand_a + id_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_new.operand_a + ro_ex_new.immediate_or_offset;
 			break;
 		case add:
-			ex_mem_new->ALU_out = id_ex_new.operand_b + id_ex_new.operand_a;
+			ex_mem_new->ALU_out = ro_ex_new.operand_b + ro_ex_new.operand_a;
 			break;
 		case subi:
 			//Handles subtraction
-			ex_mem_new->ALU_out = id_ex_new.operand_a - id_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_new.operand_a - ro_ex_new.immediate_or_offset;
 			break;
 		case beqz:
 			//Handles branch if it equals zero
-			if (id_ex_new.operand_a == 0)
+			if (ro_ex_new.operand_a == 0)
 			{
 				returnVal = 2;
-				ex_mem_new->ALU_out = id_ex_new.ALU_out;
+				ex_mem_new->ALU_out = ro_ex_new.ALU_out;
 			}
 			break;
 		case bge:
 			//Branch if greater than or equal to
-			if (id_ex_new.operand_a >= id_ex_new.operand_b)
+			if (ro_ex_new.operand_a >= ro_ex_new.operand_b)
 			{
 				returnVal = 2;
-				ex_mem_new->ALU_out = id_ex_new.ALU_out;
+				ex_mem_new->ALU_out = ro_ex_new.ALU_out;
 			}
 			break;
 		case bne:
 			//Branch if not equal
-			if (id_ex_new.operand_a != id_ex_new.operand_b)
+			if (ro_ex_new.operand_a != ro_ex_new.operand_b)
 			{
 				returnVal = 2;
-				ex_mem_new->ALU_out = id_ex_new.ALU_out;
+				ex_mem_new->ALU_out = ro_ex_new.ALU_out;
 			}
 			break;
 		case la:
 			//Handles loading from address
-			ex_mem_new->ALU_out = id_ex_new.operand_b;
+			ex_mem_new->ALU_out = ro_ex_new.operand_b;
 			break;
 		case lb:
 			//Handles loading byte
-			ex_mem_new->ALU_out = id_ex_new.operand_a + id_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_new.operand_a + ro_ex_new.immediate_or_offset;
 			break;
 		case li:
-			ex_mem_new->ALU_out = id_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_new.immediate_or_offset;
+			break;
+		case fadd:
+			ex_mem_new->f_ALU_out = ro_ex_new.f_operand_a + ro_ex_new.f_operand_b;
+			break;
+		case fmul:
+			ex_mem_new->f_ALU_out = ro_ex_new.f_operand_a * ro_ex_new.f_operand_b;
+			break;
+		case fsub:
+			ex_mem_new->f_ALU_out = ro_ex_new.f_operand_a + ro_ex_new.f_operand_b;
+			break;
+		case ld:
+			ex_mem_new0->f_ALU_out = ro_ex_new.operand_a + ro_ex_new.immediate_or_offset;
 			break;
 	}
-	ex_mem_new->rd = id_ex_new.rd;
+	ex_mem_new->rd = ro_ex_new.rd;
 	//sw: store op_b to memory in the mem stage
-	ex_mem_new->operand_b = id_ex_new.operand_b;
+	ex_mem_new->operand_b = ro_ex_new.operand_b;
 	return returnVal;
 }
 
