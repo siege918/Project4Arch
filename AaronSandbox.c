@@ -1,28 +1,6 @@
 #include <stdint.h>
 #include "Scoreboard.h"
 
-// enum FU {INTEGER, MULT1, MULT2, ADD, DIVIDE};
-// enum OP {TEST};
-
-// struct Instruction_Status {
-//     int Issue;
-//     int Read_Op;
-//     int Exec_Complete;
-//     int Write_Result;
-// };
-
-
-// struct FU_Status {
-//     int busy;
-//     enum OP op_code;
-//     int Fi;
-//     int Fj;
-//     int Fk;
-//     enum FU Qj;
-//     enum FU Qk;
-//     int Rj;
-//     int Rk;
-// };
 
 typedef int mem_addr; //32 bits to store memory addresses
 typedef int mem_word; //32 bit storage unit
@@ -73,8 +51,9 @@ int main()
 }
 
 
-issue()
+issue(int *PC)
 {
+    int ir = *pc;
     int returnValue = 255;
 
     if(DetectIssueHazard()){
@@ -88,36 +67,33 @@ issue()
     if (instruction == la || instruction == lb || instruction == li || instruction == ld || instruction == sd)
     {
         Scoreboard.FU_Statuses[0].busy = 1;
-        Scoreboard.FU_Statuses[0].op = memory[opcodeLocation];
-        Scoreboard.FU_Statuses[0].Fi = memory[destinationLocation];
+        Scoreboard.FU_Statuses[0].op = memory[ir];
+        Scoreboard.FU_Statuses[0].Fi = memory[ir + 1];
 
         //Scoreboard.FU_Statuses[0].Fk = memory[sourcelocation];
         if (instruction == la)
         {
-            Scoreboard.FU_Statuses[0].Fk = memory[memory[labelLocation]];
+            Scoreboard.FU_Statuses[0].Fk = memory[ir + 2];
         }
-        else if (instruction == lb)
-        {
-            Scoreboard.FU_Statuses[0].Fk = memory[memory[offsetLocation] + memory[sourcelocation]];
-        }
-        else if (instruction == li)
-        {
-            Scoreboard.FU_Statuses[0].Fk = memory[memory[immediateLocation];
-        }
-        else if (instruction == ld)
-        {
-            Scoreboard.FU_Statuses[0].Fk = memory[memory[offsetLocation] + memory[sourcelocation]];
-        }
+        // else if (instruction == lb)
+        // {
+        // }
+        // else if (instruction == li)
+        // {
+        // }
+        // else if (instruction == ld)
+        // {
+        // }
         else if (instruction == sd)
         {
             loadFloatIntoMemory(memory[memory[offsetLocation] + registers[sourcelocation]], memory[sourcelocation]);     
         }
+        else
+        {
+        }
 
-
-
-        Scoreboard.FU_Statuses[0].Jk = Register_Result_Status[destinationLocation];
-        Scoreboard.FU_Statuses[0].Qk = Register_Result_Status[destinationLocation];
-        if(Scoreboard.FU_Statuses[0].Fk == null)
+        Scoreboard.FU_Statuses[0].Qk = Register_Result_Status[memory[ir + 2]];
+        if(Scoreboard.FU_Statuses[0].Qk == null)
         {
             Scoreboard.FU_Statuses[0].Rk = 1;
         }
@@ -127,7 +103,7 @@ issue()
         }
 
 
-        Register_Result_Status[destinationLocation] = INTEGER;
+        Register_Result_Status[memory[ir + 2]] = INTEGER;
         returnValue = 0;
 
     }
@@ -137,9 +113,9 @@ issue()
         if (Scoreboard.FU_Statuses[1].busy != 1)
         {
             Scoreboard.FU_Statuses[1].busy = 1;
-            Scoreboard.FU_Statuses[1].op = memory[opcodeLocation];
-            Scoreboard.FU_Statuses[1].Fi = memory[destinationLocation];
-            Scoreboard.FU_Statuses[1].Fj = memory[targetLocation];
+            Scoreboard.FU_Statuses[1].op = memory[ir];
+            Scoreboard.FU_Statuses[1].Fi = memory[ir + 1];
+            Scoreboard.FU_Statuses[1].Fj = memory[ir + 2];
             Scoreboard.FU_Statuses[1].Fk = f_registers[memory[sourcelocation]];
             Scoreboard.FU_Statuses[1].Qj = Register_Result_Status[destinationLocation];
             Scoreboard.FU_Statuses[1].Qk = Register_Result_Status[destinationLocation];
