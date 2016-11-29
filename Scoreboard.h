@@ -36,4 +36,20 @@ struct ScoreBoard{
     enum FU Register_Result_Status[32];
 };
 
+
+struct ro_ex{
+    enum instruction op_code;
+    //Register names/not values
+    mem_word rs;
+    mem_word rt;
+    mem_word rd;
+    mem_word operand_a;
+    mem_word operand_b;
+    float f_operand_a;
+    float f_operand_b;
+    mem_word ALU_out;
+    mem_word immediate_or_offset;
+};
+
+
 #endif
