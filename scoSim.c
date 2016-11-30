@@ -356,7 +356,7 @@ int ReadOperands(int *pc, struct ro_ex * ro_ex_new)
             case subi:
                 ro_ex_new->rd = memory[ir + 1];//registers[ir[0 + 4]];
                 ro_ex_new->rs = memory[ir + 2];//registers[ir[0 + 8]];
-                ro_ex_new->operand_a = registers[id_ex_new->rs];
+                ro_ex_new->operand_a = registers[ro_ex_new->rs];
                 ro_ex_new->immediate_or_offset = getWordFromByteArray(memory, 3 + ir);
                 break;
             case add:
