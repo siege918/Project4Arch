@@ -24,10 +24,7 @@ mem_addr end_of_program;
 enum FU Register_Result_Status[35];
 
 int issue(int * pc, struct is_ro * is_ro_new);
-int ReadOperands(int *pc, int ir, struct ro_ex * ro_ex_new);
-int detectStructuralHazard();
-int checkForWAW();
-int setFetchBuffer();
+int readOperands(int *pc, int ir, struct ro_ex * ro_ex_new);
 char *trimwhitespace(char *str);
 int stringEquals(char * string1, char * string2);
 int stringBeginsWith(char * trim_string, char * string_to_compare);
@@ -148,11 +145,22 @@ int main(int argc, char **argv)
 
 	struct is_ro is_ro_old = { .ir = 0};
 	struct is_ro is_ro_new = { .ir = 0};
+	struct ro_ex ro_ex_old = { };
+	struct ro_ex ro_ex_new = { };
 
-	//Loop begins here
-	issue(&pc, &is_ro_new);
-	is_ro_old = is_ro_new;
-	//readoperands(&pc, is_ro_old.ir, &ro_ex_new)
+
+	int read_inst = 1;
+	int exe_result = 0;
+
+	//EXECUTION LOOP
+	while (end_of_program > pc && exe_result != 1)
+	{
+		issue(&pc, &is_ro_new);
+		is_ro_old = is_ro_new;
+		readOperands(&pc, is_ro_old.ir, &ro_ex_new);
+
+	}
+	//END EXECUTION LOOP
 }
 
 //******************************************************************************************************************************************
@@ -323,13 +331,37 @@ int issue(int * pc, struct is_ro * is_ro_new)
         Register_Result_Status[memory[ir + 1]] = ADD;
         returnValue = 3;
     }
-    *pc = *pc + 1;
+
+	enum instruction op_code = memory[is_ro_new->ir];
+	switch (op_code)
+	{
+		case syscall:
+		case nope:
+			*pc = *pc + 1;
+			break;
+		case li:
+		case la:
+		case beqz:
+			*pc = *pc + 6;
+			break;
+		case b:
+			*pc = *pc + 5;
+			break;
+		case add:
+			*pc = *pc + 4;
+			break;
+		default:
+			*pc = *pc + 7;
+			break;
+	}
+
+    //*pc = *pc + 1;
 
     return returnValue;
 
 
 }
-int ReadOperands(int *pc, int ir, struct ro_ex * ro_ex_new)
+int readOperands(int *pc, int ir, struct ro_ex * ro_ex_new)
 {
     //int ir = *pc;
     int returnValue = 255;
