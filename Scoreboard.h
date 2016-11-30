@@ -33,6 +33,7 @@ struct label_definition {
 struct ex_wr {
     enum instruction op_code;
     mem_word ALU_out;
+	float f_ALU_out;
     mem_word operand_b;
     mem_word rd;
     int init;

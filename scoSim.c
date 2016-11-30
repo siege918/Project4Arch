@@ -14,8 +14,7 @@ int labelCount = 0;
 
 int num_of_vars;
 
-float f_registers[];
-mem_word r_registers[];
+float f_registers[32];
 
 struct ScoreBoard scoreboard;
 
@@ -27,6 +26,23 @@ enum FU Register_Result_Status[35];
 int issue(int *PC);
 int ReadOperands(int *PC, struct ro_ex * ro_ex_new);
 int detectStructuralHazard();
+int checkForWAW();
+int setFetchBuffer();
+char *trimwhitespace(char *str);
+int stringEquals(char * string1, char * string2);
+int stringBeginsWith(char * trim_string, char * string_to_compare);
+int stringContains(char * string, char query);
+void insertWordIntoByteArray(byte* array, mem_addr location, mem_word value);
+int readInRegister(char ** operands);
+mem_word getWordFromByteArray(byte* array, mem_addr location);
+int parseDataString(char * trim_string, struct variable * variables, int var_counter, int program_top, byte * memory);
+mem_addr saveLabelAddressToMemory(char * label_name, struct label_reference * label_references, struct label_definition * label_definitions, byte * memory, mem_addr location);
+void loadLabel(char * trim_string, struct label_reference label_references[], struct label_definition label_definitions[], byte * memory, int load_counter);
+int parseInstructionString(char * trim_string, struct label_reference label_references[], struct label_definition label_definitions[], byte * memory, int load_counter, int num_of_vars, struct variable * variables);
+float getFloatFromByteArray(byte* array, mem_addr location);
+void insertFloatIntoByteArray(byte* array, mem_addr location, float value);
+int detectStructuralHazard();
+int detectIssueHazard();
 int checkForWAW();
 int setFetchBuffer();
 
@@ -136,16 +152,16 @@ int main(int argc, char **argv)
 //******************************************************************************************************************************************
 //******************************************************************************************************************************************
 
-issue(int * pc)
+int issue(int * pc)
 {
     int ir = *pc;
     int returnValue = 255;
 
     enum instruction instruction = memory[ir];
-    if(DetectIssueHazard()){
+    if(detectIssueHazard()){
         return returnValue;
     }
-    if(CheckForWAW())
+    if(checkForWAW())
     {
         return returnValue;
     }
@@ -315,7 +331,7 @@ int ReadOperands(int *pc, struct ro_ex * ro_ex_new)
     {
         ro_ex_new->rd = -1;
         ro_ex_new->op_code = nope;
-        return;
+        return 0;
     }
     //id_ex_new->init = 1;
     ro_ex_new -> op_code = memory[ir + 0]; 
@@ -417,70 +433,72 @@ int setFetchBuffer()
 {
 
 }
-
-
-//******************************************************************************************************************************************
-//******************************************************************************************************************************************
-
-void copyInstructionStatus(FU functional_unit, struct FU_Status * FUStatus)
+int detectIssueHazard()
 {
-	FUStatus->busy = scoreboard.FU_Statuses.busy;
-	FUStatus->op_code = scoreboard.FU_Statuses.op_code;
-	FUStatus->Fi = scoreboard.FU_Statuses.Fi;
-	FUStatus->Fj = scoreboard.FU_Statuses.Fj;
-	FUStatus->Fk = scoreboard.FU_Statuses.Fk;
-	FUStatus->Qj = scoreboard.FU_Statuses.Qj;
-	FUStatus->Qk = scoreboard.FU_Statuses.Qk;
-	FUStatus->Rj = scoreboard.FU_Statuses.Rj;
-	FUStatus->Rk = scoreboard.FU_Statuses.Rk;
+	
+}
+
+
+//******************************************************************************************************************************************
+//******************************************************************************************************************************************
+
+void copyInstructionStatus(enum FU functional_unit, struct FU_Status * FUStatus)
+{
+	FUStatus->busy = scoreboard.FU_Statuses->busy;
+	FUStatus->op_code = scoreboard.FU_Statuses->op_code;
+	FUStatus->Fi = scoreboard.FU_Statuses->Fi;
+	FUStatus->Fj = scoreboard.FU_Statuses->Fj;
+	FUStatus->Fk = scoreboard.FU_Statuses->Fk;
+	FUStatus->Qj = scoreboard.FU_Statuses->Qj;
+	FUStatus->Qk = scoreboard.FU_Statuses->Qk;
+	FUStatus->Rj = scoreboard.FU_Statuses->Rj;
+	FUStatus->Rk = scoreboard.FU_Statuses->Rk;
 }
 
 int wb(struct ex_wr * ex_wr_new)
 {	
-	if (ex_wr_new.rd >= 0)
+	if (ex_wr_new->rd >= 0)
 	{
-		switch (mem_wb_new.op_code)
+		switch (ex_wr_new->op_code)
 		{
 			case la:
 			case li:
 			case addi:
 			case subi:
 			case add:
-				registers[ex_wr_new.rd] = ex_wr_new.ALU_out;
+				registers[ex_wr_new->rd] = ex_wr_new->ALU_out;
 				break;
 			case lb:
-				registers[ex_wr_new.rd] = memory[ex_wr_new.ALU_out];
+				registers[ex_wr_new->rd] = memory[ex_wr_new->ALU_out];
 				break;
 			case ld:
-				f_registers[ex_wr_new.rd] = getFloatFromByteArray(memory, ex_wr_new.ALU_out);
+				f_registers[ex_wr_new->rd] = getFloatFromByteArray(memory, ex_wr_new->ALU_out);
 				break;
 			case fadd:
 			case fsub:
 			case fmul:
-				f_registers[ex_wr_new.rd] = ex_wr_new.f_ALU_out;
+				f_registers[ex_wr_new->rd] = ex_wr_new->f_ALU_out;
 				break;
 			case sd:
-				insertFloatIntoByteArray(memory, ex_wr_new.ALU_out, f_registers[ex_wr_new.rd]);
+				insertFloatIntoByteArray(memory, ex_wr_new->ALU_out, f_registers[ex_wr_new->rd]);
 				break;
 		}
 	}
 }
 
-int execute(struct ro_ex_old, struct ex_wr * ex_mem_new)
+int execute(struct ro_ex ro_ex_old, struct ex_wr * ex_mem_new)
 {
-	if (functional_unit == NOPE)
-	{
-		return 0;
-	}
 	
-	ex_mem_new->init = id_ex_new.init;
 	int returnVal = 0;
 	
-	ex_mem_new->op_code = id_ex_new.op_code;
+	ex_mem_new->op_code = ro_ex_old.op_code;
 	
 	//Does different things based on which instruction is called
-		switch (status.op_code)
+		switch (ro_ex_old.op_code)
 		{
+		case nope:
+			return 0;
+			break;
 		case syscall:
 			{
 				//Assigning special registers
@@ -520,66 +538,66 @@ int execute(struct ro_ex_old, struct ex_wr * ex_mem_new)
 			}
 		case addi:
 			//Handles addition
-			ex_mem_new->ALU_out = ro_ex_new.operand_a + ro_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_old.operand_a + ro_ex_old.immediate_or_offset;
 			break;
 		case add:
-			ex_mem_new->ALU_out = ro_ex_new.operand_b + ro_ex_new.operand_a;
+			ex_mem_new->ALU_out = ro_ex_old.operand_b + ro_ex_old.operand_a;
 			break;
 		case subi:
 			//Handles subtraction
-			ex_mem_new->ALU_out = ro_ex_new.operand_a - ro_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_old.operand_a - ro_ex_old.immediate_or_offset;
 			break;
 		case beqz:
 			//Handles branch if it equals zero
-			if (ro_ex_new.operand_a == 0)
+			if (ro_ex_old.operand_a == 0)
 			{
 				returnVal = 2;
-				ex_mem_new->ALU_out = ro_ex_new.ALU_out;
+				ex_mem_new->ALU_out = ro_ex_old.ALU_out;
 			}
 			break;
 		case bge:
 			//Branch if greater than or equal to
-			if (ro_ex_new.operand_a >= ro_ex_new.operand_b)
+			if (ro_ex_old.operand_a >= ro_ex_old.operand_b)
 			{
 				returnVal = 2;
-				ex_mem_new->ALU_out = ro_ex_new.ALU_out;
+				ex_mem_new->ALU_out = ro_ex_old.ALU_out;
 			}
 			break;
 		case bne:
 			//Branch if not equal
-			if (ro_ex_new.operand_a != ro_ex_new.operand_b)
+			if (ro_ex_old.operand_a != ro_ex_old.operand_b)
 			{
 				returnVal = 2;
-				ex_mem_new->ALU_out = ro_ex_new.ALU_out;
+				ex_mem_new->ALU_out = ro_ex_old.ALU_out;
 			}
 			break;
 		case la:
 			//Handles loading from address
-			ex_mem_new->ALU_out = ro_ex_new.operand_b;
+			ex_mem_new->ALU_out = ro_ex_old.operand_b;
 			break;
 		case lb:
 			//Handles loading byte
-			ex_mem_new->ALU_out = ro_ex_new.operand_a + ro_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_old.operand_a + ro_ex_old.immediate_or_offset;
 			break;
 		case li:
-			ex_mem_new->ALU_out = ro_ex_new.immediate_or_offset;
+			ex_mem_new->ALU_out = ro_ex_old.immediate_or_offset;
 			break;
 		case fadd:
-			ex_mem_new->f_ALU_out = ro_ex_new.f_operand_a + ro_ex_new.f_operand_b;
+			ex_mem_new->f_ALU_out = ro_ex_old.f_operand_a + ro_ex_old.f_operand_b;
 			break;
 		case fmul:
-			ex_mem_new->f_ALU_out = ro_ex_new.f_operand_a * ro_ex_new.f_operand_b;
+			ex_mem_new->f_ALU_out = ro_ex_old.f_operand_a * ro_ex_old.f_operand_b;
 			break;
 		case fsub:
-			ex_mem_new->f_ALU_out = ro_ex_new.f_operand_a + ro_ex_new.f_operand_b;
+			ex_mem_new->f_ALU_out = ro_ex_old.f_operand_a + ro_ex_old.f_operand_b;
 			break;
 		case ld:
-			ex_mem_new0->f_ALU_out = ro_ex_new.operand_a + ro_ex_new.immediate_or_offset;
+			ex_mem_new->f_ALU_out = ro_ex_old.operand_a + ro_ex_old.immediate_or_offset;
 			break;
 	}
-	ex_mem_new->rd = ro_ex_new.rd;
+	ex_mem_new->rd = ro_ex_old.rd;
 	//sw: store op_b to memory in the mem stage
-	ex_mem_new->operand_b = ro_ex_new.operand_b;
+	ex_mem_new->operand_b = ro_ex_old.operand_b;
 	return returnVal;
 }
 
@@ -625,6 +643,8 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 		string_counter++;
 	} while (trim_string[string_counter] != '.');
 	string_counter++;
+	
+	char *value_text;
 
 	switch (trim_string[string_counter])
 	{
@@ -646,7 +666,7 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 		variables[num_of_vars].variable_addr = var_counter + program_top;
 		num_of_vars++;
 
-		char *value_text = trimwhitespace(trim_string + string_counter);
+		value_text = trimwhitespace(trim_string + string_counter);
 		//trim_string = trimwhitespace(trim_string + string_counter);
 
 		mem_word value = atoi(value_text);
@@ -711,15 +731,17 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 			//printf("Instructions are invalid.");
 			//return 0;
 		}
-		char *value_text_space = trimwhitespace(trim_string + string_counter); //gets value of syscall
+		{
+			char *value_text_space = trimwhitespace(trim_string + string_counter); //gets value of syscall
 
-		variables[num_of_vars].is_text = 1;
-		variables[num_of_vars].variable_addr = var_counter + program_top;
-		num_of_vars++;
+			variables[num_of_vars].is_text = 1;
+			variables[num_of_vars].variable_addr = var_counter + program_top;
+			num_of_vars++;
 
-		int length = atoi(value_text_space);
+			int length = atoi(value_text_space);
 
-		var_counter += length;
+			var_counter += length;
+		}
 		break;
 	case 'f':
 		if (trim_string[1 + string_counter] == 'l' &&
@@ -735,20 +757,20 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 			//printf("Instructions are invalid.");
 			//return 0;
 		}
-		char *value_text_space = trimwhitespace(trim_string + string_counter); //gets value of syscall
+		{
+			char *value_text_space = trimwhitespace(trim_string + string_counter); //gets value of syscall
 
-		variables[num_of_vars].is_text = 0;
-		variables[num_of_vars].variable_addr = var_counter + program_top;
-		num_of_vars++;
+			variables[num_of_vars].is_text = 0;
+			variables[num_of_vars].variable_addr = var_counter + program_top;
+			num_of_vars++;
 
-		char *value_text = trimwhitespace(trim_string + string_counter);
-		//trim_string = trimwhitespace(trim_string + string_counter);
+			value_text = trimwhitespace(trim_string + string_counter);
+			float value = strtof(value_text, NULL);
+			//mem_word value = atoi(trim_string); 
 
-		float value = strtof(value_text);
-		//mem_word value = atoi(trim_string); 
-
-		insertFloatIntoByteArray(memory, var_counter + program_top, value);
-		var_counter = var_counter + 8;
+			insertFloatIntoByteArray(memory, var_counter + program_top, value);
+			var_counter = var_counter + 8;
+		}
 		break;
 	default:
 		printf("One or more data types is invalid.");
@@ -1260,7 +1282,53 @@ void insertFloatIntoByteArray(byte* array, mem_addr location, float value)
 }
 
 
+//This reads a string for the value of the next register and returns it.
+int readInRegister(char ** operands)
+{
+	if ((*operands)[0] != '$')
+	{
+		return -1;
+	}
 
+	char registerFirstChar = ((*operands)[1]);
+	if (isalpha(registerFirstChar))
+	{
+		if ((registerFirstChar != 'a' && registerFirstChar != 'v') || !isdigit(((*operands)[2])))
+		{
+			return -1;
+		}
+		int registerValue = ((*operands)[2]) - '0';
+		*operands = trimwhitespace(*operands + 4);
+		if (registerFirstChar == 'a' && registerValue == 0)
+		{
+			return 33;
+		}
+		else if (registerFirstChar == 'a' && registerValue == 1)
+		{
+			return 34;
+		}
+		else if (registerFirstChar == 'v' && registerValue == 0)
+		{
+			return 32;
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	int registerResult = registerFirstChar - '0';
+	if (isdigit((*operands)[2]))
+	{
+		registerResult = registerResult * 10 + ((*operands)[2] - '0');
+		*operands = trimwhitespace(*operands + 4);
+	}
+	else
+	{
+		*operands = trimwhitespace(*operands + 3);
+	}
+	return registerResult - 1;
+}
 
 //////////////////
 //STRING METHODS//
