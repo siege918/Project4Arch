@@ -130,14 +130,21 @@ int main(int argc, char **argv)
 		printf("Invalid file name.");
 	}
 
-	issue(&pc);
+	struct is_ro is_ro_old = { .ir = 0};
+	struct is_ro is_ro_new = { .ir = 0};
+
+	//Loop begins here
+	issue(&pc, &is_ro_new);
+	is_ro_old = is_ro_new;
+	//readoperands(&pc, is_ro_old.ir, &ro_ex_new)
 }
 
 //******************************************************************************************************************************************
 //******************************************************************************************************************************************
 
-issue(int * pc)
+issue(int * pc, struct is_ro * is_ro_new)
 {
+    is_ro_new->ir = *pc;
     int ir = *pc;
     int returnValue = 255;
 
@@ -306,9 +313,9 @@ issue(int * pc)
 
 
 }
-int ReadOperands(int *pc, struct ro_ex * ro_ex_new)
+int ReadOperands(int *pc, int ir, struct ro_ex * ro_ex_new)
 {
-    int ir = *pc;
+    //int ir = *pc;
     int returnValue = 255;
 
     if (ir == -1)
@@ -407,15 +414,15 @@ int ReadOperands(int *pc, struct ro_ex * ro_ex_new)
 
 int detectStructuralHazard()
 {
-    return 1;
+    return 0;
 }
 int checkForWAW()
 {
-    return 1;
+    return 0;
 }
 int setFetchBuffer()
 {
-
+	return 0;
 }
 
 

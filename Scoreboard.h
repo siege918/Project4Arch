@@ -75,6 +75,11 @@ struct ScoreBoard{
 };
 
 
+struct is_ro{
+    enum instruction op_code;
+    int ir;
+};
+
 struct ro_ex{
     enum instruction op_code;
     //Register names/not values
