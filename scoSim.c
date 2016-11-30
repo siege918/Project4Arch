@@ -60,8 +60,8 @@ int main(int argc, char **argv)
 
 							   //This area is what loads the file
 	FILE *file;
-	file = fopen(fileName, "r");
-	//file = fopen("C:\\lab3c.s", "r");
+	//file = fopen(fileName, "r");
+	file = fopen("C:\\lab4c.s", "r");
 
 
 	//Makes an array of variables that can be filled out
@@ -97,6 +97,11 @@ int main(int argc, char **argv)
 			else if (strcmp(trim_string, ".text") == 0)
 			{
 				is_loading_code = 1;
+			}
+
+			else if (strcmp(trim_string, ".data") == 0)
+			{
+
 			}
 
 			else if (is_loading_code == 1)
@@ -143,22 +148,31 @@ int main(int argc, char **argv)
 		printf("Invalid file name.");
 	}
 
-	struct is_ro is_ro_old = { .ir = 0};
-	struct is_ro is_ro_new = { .ir = 0};
-	struct ro_ex ro_ex_old = { };
-	struct ro_ex ro_ex_new = { };
+	struct is_ro is_ro_old = { .ir = -1};
+	struct is_ro is_ro_new = { .ir = -1};
+	struct ro_ex ro_ex_old = { .op_code = nope};
+	struct ro_ex ro_ex_new = { .op_code = nope };
+	struct ex_wr ex_wr_old = { .op_code = nope };
+	struct ex_wr ex_wr_new = { .op_code = nope };
 
 
 	int read_inst = 1;
 	int exe_result = 0;
 
+	int ran_once = 0;
+
 	//EXECUTION LOOP
 	while (end_of_program > pc && exe_result != 1)
 	{
-		issue(&pc, &is_ro_new);
 		is_ro_old = is_ro_new;
+		issue(&pc, &is_ro_new);
+		ro_ex_old = ro_ex_new;
 		readOperands(&pc, is_ro_old.ir, &ro_ex_new);
-
+		ro_ex_old = ro_ex_new;
+		//int execute(struct ro_ex ro_ex_old, struct ex_wr * ex_mem_new)
+		execute(ro_ex_new, &ex_wr_new);
+		ex_wr_old = ex_wr_new;
+		wb(&ex_wr_new);
 	}
 	//END EXECUTION LOOP
 }
@@ -188,10 +202,11 @@ int issue(int * pc, struct is_ro * is_ro_new)
         scoreboard.FU_Statuses[0].Fi = memory[ir + 1];
 
         //Scoreboard.FU_Statuses[0].Fk = memory[sourcelocation];
-        if (instruction == la)
+        /*if (instruction == la)
         {
             scoreboard.FU_Statuses[0].Fk = memory[ir + 2];
-        }
+        }*/
+		//Probably need to return right here if only 1 instruction for scoreboard
         // else if (instruction == lb)
         // {
         // }
@@ -201,24 +216,25 @@ int issue(int * pc, struct is_ro * is_ro_new)
         // else if (instruction == ld)
         // {
         // }
-        else if (instruction == sd)
+        if (instruction == sd)
         {
             //loadFloatIntoMemory(memory[memory[offsetLocation] + registers[sourcelocation]], memory[sourcelocation]);     
         }
         else
         {
         }
-        
-        if(Register_Result_Status[memory[ir + 2]] == NOPE)
-        {
-            scoreboard.FU_Statuses[0].Rk = 1;
-        }
-        else
-        {
-            scoreboard.FU_Statuses[0].Qk = Register_Result_Status[memory[ir + 2]];
-            scoreboard.FU_Statuses[0].Rk = 0;
-        }
-
+		if (instruction == ld || instruction == sd)
+		{
+			if (Register_Result_Status[memory[ir + 2]] == NOPE)
+			{
+				scoreboard.FU_Statuses[0].Rk = 1;
+			}
+			else
+			{
+				scoreboard.FU_Statuses[0].Qk = Register_Result_Status[memory[ir + 2]];
+				scoreboard.FU_Statuses[0].Rk = 0;
+			}
+		}
 
         Register_Result_Status[memory[ir + 2]] = INTEGER;
         returnValue = 0;
@@ -347,6 +363,9 @@ int issue(int * pc, struct is_ro * is_ro_new)
 		case b:
 			*pc = *pc + 5;
 			break;
+		case fadd:
+		case fsub:
+		case fmul:
 		case add:
 			*pc = *pc + 4;
 			break;
@@ -474,7 +493,7 @@ int setFetchBuffer()
 }
 int detectIssueHazard()
 {
-	
+	return 0;
 }
 
 
@@ -804,7 +823,7 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 			num_of_vars++;
 
 			value_text = trimwhitespace(trim_string + string_counter);
-			float value = (float)strtod(value_text, NULL);
+			float value = strtof(value_text, NULL);
 			//mem_word value = atoi(trim_string); 
 
 			insertFloatIntoByteArray(memory, var_counter + program_top, value);
