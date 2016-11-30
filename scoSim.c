@@ -24,7 +24,7 @@ mem_addr end_of_program;
 enum FU Register_Result_Status[35];
 
 int issue(int * pc, struct is_ro * is_ro_new);
-int ReadOperands(int *PC, struct ro_ex * ro_ex_new);
+int ReadOperands(int *pc, int ir, struct ro_ex * ro_ex_new);
 int detectStructuralHazard();
 int checkForWAW();
 int setFetchBuffer();
