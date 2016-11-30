@@ -772,7 +772,7 @@ int parseDataString(char * trim_string, struct variable * variables, int var_cou
 			num_of_vars++;
 
 			value_text = trimwhitespace(trim_string + string_counter);
-			float value = atof(value_text);
+			float value = (float)strtod(value_text);
 			//mem_word value = atoi(trim_string); 
 
 			insertFloatIntoByteArray(memory, var_counter + program_top, value);
