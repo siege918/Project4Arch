@@ -170,7 +170,18 @@ int main(int argc, char **argv)
 		readOperands(&pc, is_ro_old.ir, &ro_ex_new);
 		ro_ex_old = ro_ex_new;
 		//int execute(struct ro_ex ro_ex_old, struct ex_wr * ex_mem_new)
-		execute(ro_ex_new, &ex_wr_new);
+		int exe_result = execute(ro_ex_new, &ex_wr_new);
+
+		if (exe_result == 2)
+		{
+			pc = ex_wr_new.ALU_out;
+			ro_ex_old.rd = -1;
+			ro_ex_old.op_code = nope;
+			ro_ex_new.rd = -1;
+			ro_ex_new.op_code = nope;
+			is_ro_old.ir = -1;
+		}
+
 		ex_wr_old = ex_wr_new;
 		wb(&ex_wr_new);
 	}
@@ -634,6 +645,7 @@ int execute(struct ro_ex ro_ex_old, struct ex_wr * ex_mem_new)
 			ex_mem_new->ALU_out = ro_ex_old.operand_b;
 			break;
 		case lb:
+		case sd:
 			//Handles loading byte
 			ex_mem_new->ALU_out = ro_ex_old.operand_a + ro_ex_old.immediate_or_offset;
 			break;
@@ -1315,8 +1327,22 @@ float getFloatFromByteArray(byte* array, mem_addr location)
 	printf("Right side: %d\n", rightSide);
 	
 	float f_rightSide = rightSide * .000000001f;
+
+	float returnVal;
+
+	if (rightSide < 0)
+	{
+		f_rightSide = f_rightSide * -1.0f;
+		returnVal = (leftSide + f_rightSide) * -1.0f;
+	}
+	else
+	{
+		returnVal = leftSide + f_rightSide;
+	}
 	
-	return leftSide + f_rightSide;
+	printf("Value: %2.2f", returnVal);
+
+	return returnVal;
 }
 
 //Inserts a float into an array at the selected array as 4 bytes
