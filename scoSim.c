@@ -42,6 +42,8 @@ int detectStructuralHazard();
 int detectIssueHazard();
 int checkForWAW();
 int setFetchBuffer();
+int execute(struct ro_ex ro_ex_old, struct ex_wr * ex_mem_new);
+int wb(struct ex_wr * ex_wr_new);
 
 int main(int argc, char **argv)
 {
@@ -186,6 +188,7 @@ int main(int argc, char **argv)
 		wb(&ex_wr_new);
 	}
 	//END EXECUTION LOOP
+	int i = 0;
 }
 
 //******************************************************************************************************************************************
